@@ -3,22 +3,37 @@ import fitz  # PyMuPDF
 import base64
 import requests
 import pandas as pd
+import os
 
 # Fonction pour obtenir la liste triée des fichiers PDF en fonction des critères de l'utilisateur
 def get_sorted_pdf_paths(uploaded_files):
+    if not uploaded_files:
+        st.error("No files uploaded.")
+        return []
+
     pdf_files = [f for f in uploaded_files if 'IGA' in f.name and f.name.endswith('.pdf')]
     radar_files = sorted([f for f in pdf_files if 'raddar' in f.name])
     w_files = sorted([f for f in pdf_files if 'W' in f.name])
     other_files = sorted([f for f in pdf_files if f not in radar_files and f not in w_files])
+    
+    # Debugging information
+    st.write(f"PDF files: {[f.name for f in pdf_files]}")
+    st.write(f"Radar files: {[f.name for f in radar_files]}")
+    st.write(f"W files: {[f.name for f in w_files]}")
+    st.write(f"Other files: {[f.name for f in other_files]}")
+
     return radar_files + w_files + other_files
 
 # Fonction pour convertir chaque page d'un PDF en JPG
-def convert_pdf_to_jpg(pdf_file, file_index, image_paths):
+def convert_pdf_to_jpg(pdf_file, file_index, image_paths, output_directory):
+    if not os.path.exists(output_directory):
+        os.makedirs(output_directory)
+    
     pdf_document = fitz.open(stream=pdf_file.read(), filetype="pdf")
     base_name = pdf_file.name.replace('.pdf', '')
     page = pdf_document.load_page(0)
     pix = page.get_pixmap()
-    output_path = f"{base_name}_page_{file_index + 1:02d}.jpg"
+    output_path = os.path.join(output_directory, f"{base_name}_page_{file_index + 1:02d}.jpg")
     pix.save(output_path)
     image_paths.append(output_path)
 
@@ -75,8 +90,9 @@ def main():
         pdf_progress_bar = st.progress(0)
 
         # Convertir chaque PDF et suivre l'index de page global
+        output_directory = "converted_files"  # Répertoire de sortie
         for index, pdf_file in enumerate(sorted_files):
-            convert_pdf_to_jpg(pdf_file, index, image_paths)
+            convert_pdf_to_jpg(pdf_file, index, image_paths, output_directory)
             # Mettre à jour la progression
             pdf_progress_bar.progress((index + 1) / total_files)
 
