@@ -12,9 +12,9 @@ def get_sorted_pdf_paths(uploaded_files):
         return []
 
     pdf_files = [f for f in uploaded_files if 'IGA' in f.name and f.name.endswith('.pdf')]
-    radar_files = sorted([f for f in pdf_files if 'raddar' in f.name])
-    w_files = sorted([f for f in pdf_files if 'W' in f.name])
-    other_files = sorted([f for f in pdf_files if f not in radar_files and f not in w_files])
+    radar_files = sorted([f for f in pdf_files if 'raddar' in f.name], key=lambda x: x.name)
+    w_files = sorted([f for f in pdf_files if 'W' in f.name], key=lambda x: x.name)
+    other_files = sorted([f for f in pdf_files if f not in radar_files and f not in w_files], key=lambda x: x.name)
     
     # Debugging information
     st.write(f"PDF files: {[f.name for f in pdf_files]}")
@@ -183,7 +183,7 @@ def main():
             # Combiner tous les DataFrames en un seul
             if dataframes:
                 data_full = pd.concat(dataframes, ignore_index=True)
-                st.title("Générer les Ingrédients de la Semaine")
+                st.title("Ingrédients et Prix des Images")
                 st.dataframe(data_full)
             else:
                 st.error("Aucun DataFrame n'a été généré avec succès.")
