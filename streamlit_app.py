@@ -1,6 +1,5 @@
 import streamlit as st
 import fitz  # PyMuPDF
-import os
 import base64
 import requests
 import pandas as pd
@@ -57,46 +56,42 @@ def main():
         st.warning("Please provide an OpenAI API Key.")
         return
 
-    # Répertoire par défaut
-    default_directory = "C:\\Users\\sacha\\Desktop\\C&M\\IGIA\\converted_files"
-    directory = st.text_input("Directory", default_directory)
+    # Espace de glisser-déposer pour les fichiers PDF
+    uploaded_files = st.file_uploader("Upload PDF files", type="pdf", accept_multiple_files=True)
 
-    if st.button("Convert PDFs"):
-        if os.path.exists(directory):
-            # Obtenir la liste triée des fichiers PDF
-            pdf_paths = get_sorted_pdf_paths(directory)
-            total_files = len(pdf_paths)
+    if uploaded_files:
+        # Obtenir la liste triée des fichiers PDF
+        sorted_files = get_sorted_pdf_paths(uploaded_files)
+        total_files = len(sorted_files)
 
-            if total_files == 0:
-                st.write("No PDF files found in the specified directory.")
-                return
+        if total_files == 0:
+            st.write("No PDF files found.")
+            return
 
-            # Initialiser la liste pour stocker les chemins des images
-            image_paths = []
+        # Initialiser la liste pour stocker les chemins des images
+        image_paths = []
 
-            # Initialiser la barre de progression pour la conversion PDF en JPG
-            pdf_progress_bar = st.progress(0)
+        # Initialiser la barre de progression pour la conversion PDF en JPG
+        pdf_progress_bar = st.progress(0)
 
-            # Convertir chaque PDF et suivre l'index de page global
-            for index, pdf_path in enumerate(pdf_paths):
-                convert_pdf_to_jpg(directory, pdf_path, index, image_paths)
-                # Mettre à jour la progression
-                pdf_progress_bar.progress((index + 1) / total_files)
+        # Convertir chaque PDF et suivre l'index de page global
+        for index, pdf_file in enumerate(sorted_files):
+            convert_pdf_to_jpg(pdf_file, index, image_paths)
+            # Mettre à jour la progression
+            pdf_progress_bar.progress((index + 1) / total_files)
 
-            # Vérifier que tous les fichiers existent
-            existing_paths = [path for path in image_paths if os.path.exists(path)]
-            missing_paths = set(image_paths) - set(existing_paths)
+        # Vérifier que tous les fichiers existent
+        existing_paths = [path for path in image_paths if os.path.exists(path)]
+        missing_paths = set(image_paths) - set(existing_paths)
 
-            if missing_paths:
-                st.write("Missing files:", missing_paths)
-            else:
-                st.write("All files generated successfully.")
-                st.session_state.image_paths = existing_paths
+        if missing_paths:
+            st.write("Missing files:", missing_paths)
         else:
-            st.write("The specified directory does not exist.")
+            st.write("All files generated successfully.")
+            st.session_state.image_paths = existing_paths
 
     if 'image_paths' in st.session_state and st.session_state.image_paths:
-        if st.button("Generate DataFrames"):
+        if st.button("Générer les Ingrédients de la Semaine"):
             # Liste pour stocker les DataFrames
             dataframes = []
             headers = {
