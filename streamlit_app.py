@@ -15,12 +15,6 @@ def get_sorted_pdf_paths(uploaded_files):
     radar_files = sorted([f for f in pdf_files if 'raddar' in f.name], key=lambda x: x.name)
     w_files = sorted([f for f in pdf_files if 'W' in f.name], key=lambda x: x.name)
     other_files = sorted([f for f in pdf_files if f not in radar_files and f not in w_files], key=lambda x: x.name)
-    
-    # Debugging information
-    st.write(f"PDF files: {[f.name for f in pdf_files]}")
-    st.write(f"Radar files: {[f.name for f in radar_files]}")
-    st.write(f"W files: {[f.name for f in w_files]}")
-    st.write(f"Other files: {[f.name for f in other_files]}")
 
     return radar_files + w_files + other_files
 
