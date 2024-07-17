@@ -58,7 +58,7 @@ def main():
         return
 
     # Répertoire par défaut
-    default_directory = "C:\\Users\\sacha\\Desktop\\C&M\\IGIA\\converted_files"
+    default_directory = "\\converted_files"
     directory = st.text_input("Directory", default_directory)
 
     if st.button("Convert PDFs"):
