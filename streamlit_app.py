@@ -48,7 +48,7 @@ def main():
         unsafe_allow_html=True
     )
 
-    st.title("PDF to JPG Converter and DataFrame Generator")
+    st.title("IGIA 1.0")
 
     # Demander la clé API
     api_key = st.text_input("OpenAI API Key", type="password")
