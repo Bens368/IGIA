@@ -6,20 +6,20 @@ import requests
 import pandas as pd
 
 # Fonction pour obtenir la liste triée des fichiers PDF en fonction des critères de l'utilisateur
-def get_sorted_pdf_paths(directory):
-    pdf_files = [f for f in os.listdir(directory) if 'IGA' in f and f.endswith('.pdf')]
-    radar_files = sorted([f for f in pdf_files if 'raddar' in f])
-    w_files = sorted([f for f in pdf_files if 'W' in f])
+def get_sorted_pdf_paths(uploaded_files):
+    pdf_files = [f for f in uploaded_files if 'IGA' in f.name and f.name.endswith('.pdf')]
+    radar_files = sorted([f for f in pdf_files if 'raddar' in f.name])
+    w_files = sorted([f for f in pdf_files if 'W' in f.name])
     other_files = sorted([f for f in pdf_files if f not in radar_files and f not in w_files])
     return radar_files + w_files + other_files
 
 # Fonction pour convertir chaque page d'un PDF en JPG
-def convert_pdf_to_jpg(directory, pdf_path, file_index, image_paths):
-    pdf_document = fitz.open(os.path.join(directory, pdf_path))
-    base_name = pdf_path.replace('.pdf', '')
+def convert_pdf_to_jpg(pdf_file, file_index, image_paths):
+    pdf_document = fitz.open(stream=pdf_file.read(), filetype="pdf")
+    base_name = pdf_file.name.replace('.pdf', '')
     page = pdf_document.load_page(0)
     pix = page.get_pixmap()
-    output_path = os.path.join(directory, f"{base_name}_page_{file_index + 1:02d}.jpg")
+    output_path = f"{base_name}_page_{file_index + 1:02d}.jpg"
     pix.save(output_path)
     image_paths.append(output_path)
 
@@ -48,7 +48,7 @@ def main():
         unsafe_allow_html=True
     )
 
-    st.title("IGIA 1.0")
+    st.title("IGIA")
 
     # Demander la clé API
     api_key = st.text_input("OpenAI API Key", type="password")
@@ -58,7 +58,7 @@ def main():
         return
 
     # Répertoire par défaut
-    default_directory = "\\converted_files"
+    default_directory = "C:\\Users\\sacha\\Desktop\\C&M\\IGIA\\converted_files"
     directory = st.text_input("Directory", default_directory)
 
     if st.button("Convert PDFs"):
@@ -172,7 +172,7 @@ def main():
             # Combiner tous les DataFrames en un seul
             if dataframes:
                 data_full = pd.concat(dataframes, ignore_index=True)
-                st.title("Ingrédients et Prix des Images")
+                st.title("Générer les Ingrédients de la Semaine")
                 st.dataframe(data_full)
             else:
                 st.error("Aucun DataFrame n'a été généré avec succès.")
