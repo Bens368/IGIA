@@ -91,7 +91,7 @@ def main():
             st.session_state.image_paths = existing_paths
 
     if 'image_paths' in st.session_state and st.session_state.image_paths:
-        if st.button("Générer les Ingrédients de la Semaine"):
+        if st.button("Generate DataFrames"):
             # Liste pour stocker les DataFrames
             dataframes = []
             headers = {
