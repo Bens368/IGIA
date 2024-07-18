@@ -56,11 +56,6 @@ def main():
             font-size: 2em;
             font-weight: bold;
         }
-        .custom-label {
-            color: #C3CEE2;
-            font-size: 1.2em;
-            font-weight: bold;
-        }
         </style>
         """,
         unsafe_allow_html=True
@@ -69,16 +64,14 @@ def main():
     st.markdown('<h1 class="title-text">IGIA</h1>', unsafe_allow_html=True)
 
     # Demander la clé API
-    st.markdown('<p class="custom-label">OpenAI API Key</p>', unsafe_allow_html=True)
-    api_key = st.text_input("", type="password")
+    api_key = st.text_input("OpenAI API Key", type="password")
 
     if not api_key:
         st.warning("Please provide an OpenAI API Key.")
         return
 
     # Espace de glisser-déposer pour les fichiers PDF
-    st.markdown('<p class="custom-label">Upload PDF files</p>', unsafe_allow_html=True)
-    uploaded_files = st.file_uploader("", type="pdf", accept_multiple_files=True)
+    uploaded_files = st.file_uploader("Upload PDF files", type="pdf", accept_multiple_files=True)
 
     if uploaded_files:
         # Obtenir la liste triée des fichiers PDF
