@@ -51,15 +51,17 @@ def main():
             display: flex;
             align-items: center;
         }
-        .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
+        .title-text {
             color: #E2AB49;
+            font-size: 2em;
+            font-weight: bold;
         }
         </style>
         """,
         unsafe_allow_html=True
     )
 
-    st.title("IGIA")
+    st.markdown('<h1 class="title-text">IGIA</h1>', unsafe_allow_html=True)
 
     # Demander la clé API
     api_key = st.text_input("OpenAI API Key", type="password")
@@ -180,7 +182,7 @@ def main():
             # Combiner tous les DataFrames en un seul
             if dataframes:
                 data_full = pd.concat(dataframes, ignore_index=True)
-                st.title("Ingrédients et Prix des Images")
+                st.markdown('<h2 class="title-text">Ingrédients et Prix des Images</h2>', unsafe_allow_html=True)
                 st.dataframe(data_full)
             else:
                 st.error("Aucun DataFrame n'a été généré avec succès.")
