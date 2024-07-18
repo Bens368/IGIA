@@ -51,6 +51,9 @@ def main():
             display: flex;
             align-items: center;
         }
+        .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
+            color: #E2AB49;
+        }
         </style>
         """,
         unsafe_allow_html=True
