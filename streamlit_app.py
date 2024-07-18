@@ -184,8 +184,39 @@ def main():
                 data_full = pd.concat(dataframes, ignore_index=True)
                 st.markdown('<h2 class="title-text">Ingrédients et Prix des Images</h2>', unsafe_allow_html=True)
                 st.dataframe(data_full)
+                
+                st.session_state.data_full = data_full
             else:
                 st.error("Aucun DataFrame n'a été généré avec succès.")
+
+    # Ajouter le bouton pour générer les recettes si le tableau des ingrédients est disponible
+    if 'data_full' in st.session_state and not st.session_state.data_full.empty:
+        if st.button("Générer 7 recettes"):
+            ingredients_list = st.session_state.data_full['Ingrédients'].tolist()
+
+            payload = {
+                "model": "gpt-4o",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": f"Utilise cette liste d'ingrédients {ingredients_list} pour générer 7 recettes différentes."
+                    }
+                ],
+                "max_tokens": 4096
+            }
+
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}"
+            }
+
+            response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
+            response_json = response.json()
+
+            recipes = response_json['choices'][0]['message']['content']
+
+            st.markdown('<h2 class="title-text">7 Recettes Générées</h2>', unsafe_allow_html=True)
+            st.write(recipes)
 
 if __name__ == "__main__":
     main()
