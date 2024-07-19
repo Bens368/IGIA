@@ -153,9 +153,6 @@ def main():
                 # Nettoyer le texte pour enlever les délimiteurs de code Markdown
                 code_text = code_text.strip("```python").strip("```").strip()
 
-                # Imprimer le code pour vérifier
-                print(f"Code généré pour data{i+1}:\n{code_text}\n")
-
                 try:
                     # Exécuter le code extrait dans un environnement sûr
                     local_vars = {}
