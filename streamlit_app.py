@@ -192,7 +192,7 @@ def main():
         if st.button("Find Recipes"):
             try:
                 # Charger le fichier Excel pour les recettes
-                recettes_path = 'recettes-igia.xlsx'  # Assurez-vous que le fichier existe dans le répertoire de travail
+                recettes_path = 'assets/recettes-igia.xlsx'  # Assurez-vous que le fichier existe dans le répertoire de travail
                 recettes_df = pd.read_excel(recettes_path, sheet_name='DATA')
 
                 # Charger le DataFrame des ingrédients disponibles
