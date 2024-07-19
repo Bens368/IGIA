@@ -59,6 +59,18 @@ def main():
         .stProgress > div > div > div > div {
             background-color: #E2AB49;
         }
+        .stButton > button {
+            background-color: #E2AB49;
+            color: white;
+        }
+        .stButton > button:hover {
+            background-color: #C99543;
+            color: white;
+        }
+        .stButton > button:active {
+            background-color: #AF8B3E;
+            color: white;
+        }
         </style>
         """,
         unsafe_allow_html=True
