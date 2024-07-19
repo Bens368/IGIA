@@ -47,6 +47,7 @@ def main():
         }
         .header {
             background-color: white;
+            color: white;
             padding: 10px;
             display: flex;
             align-items: center;
@@ -89,14 +90,14 @@ def main():
         image_paths = []
 
         # Initialiser la barre de progression pour la conversion PDF en JPG
-        pdf_progress_bar = st.progress(0)
+        # pdf_progress_bar = st.progress(0)
 
         # Convertir chaque PDF et suivre l'index de page global
         output_directory = "converted_files"  # Répertoire de sortie
         for index, pdf_file in enumerate(sorted_files):
             convert_pdf_to_jpg(pdf_file, index, image_paths, output_directory)
             # Mettre à jour la progression
-            pdf_progress_bar.progress((index + 1) / total_files)
+            # pdf_progress_bar.progress((index + 1) / total_files)
 
         # Vérifier que tous les fichiers existent
         existing_paths = [path for path in image_paths if os.path.exists(path)]
