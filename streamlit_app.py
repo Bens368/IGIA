@@ -86,7 +86,7 @@ def main():
         image_paths = []
 
         # Initialiser la barre de progression pour la conversion PDF en JPG
-        pdf_progress_bar = st.progress(0)
+        # pdf_progress_bar = st.progress(0)
 
         # Convertir chaque PDF et suivre l'index de page global
         output_directory = "converted_files"  # Répertoire de sortie
