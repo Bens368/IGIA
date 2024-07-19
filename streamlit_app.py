@@ -184,39 +184,82 @@ def main():
                 data_full = pd.concat(dataframes, ignore_index=True)
                 st.markdown('<h2 class="title-text">Ingrédients et Prix des Images</h2>', unsafe_allow_html=True)
                 st.dataframe(data_full)
-                
-                st.session_state.data_full = data_full
+                # Sauvegarder le DataFrame combiné pour l'étape suivante
+                data_full.to_csv('data_full.csv', index=False)
             else:
                 st.error("Aucun DataFrame n'a été généré avec succès.")
 
-    # Ajouter le bouton pour générer les recettes si le tableau des ingrédients est disponible
-    if 'data_full' in st.session_state and not st.session_state.data_full.empty:
-        if st.button("Générer 7 recettes"):
-            ingredients_list = st.session_state.data_full['Ingrédients'].tolist()
+    # Étape suivante pour utiliser data_full et recettes_igia.xlsx
+    if st.button("Find Recipes"):
+        try:
+            # Charger le fichier Excel pour les recettes
+            recettes_path = 'assets/recettes-igia.xlsx'  # Assurez-vous que le fichier existe dans le répertoire de travail
+            recettes_df = pd.read_excel(recettes_path, sheet_name='DATA')
 
-            payload = {
-                "model": "gpt-4o",
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": f"Utilise cette liste d'ingrédients {ingredients_list} pour générer 7 recettes différentes."
-                    }
-                ],
-                "max_tokens": 4096
-            }
+            # Charger le DataFrame des ingrédients disponibles
+            data_full_path = 'data_full.csv'
+            data_full_df = pd.read_csv(data_full_path)
+
+            # Extraire les ingrédients disponibles
+            promo_ingredients = set(data_full_df['Ingrédients'].str.lower().str.strip())
+
+            # Convertir la colonne "Dernière semaine d'utilisation" en numérique
+            recettes_df["Dernière semaine d'utilisation"] = pd.to_numeric(recettes_df["Dernière semaine d'utilisation"], errors='coerce')
+
+            num_rows = len(recettes_df)
+
+            # Trouver l'indice du milieu
+            mid_index = num_rows // 2
+
+            # Diviser le DataFrame en deux parties
+            first_half = recettes_df.iloc[:mid_index]
+            second_half = recettes_df.iloc[mid_index:]
+
+            # Construire le prompt pour l'API GPT-4o
+            prompt = f"""
+            Sélectionne les recettes dans le DataFrame `first_half` qui répondent à au moins un des deux critères suivants:
+            1. La colonne `Proteine` contient une protéine qui se trouve également dans la liste `promo_ingredients` ET La recette contient au moins 3 ingrédients dans la colonne `Ingrédients` qui se trouvent aussi dans `promo_ingredients`.
+            2. Si la protéine n'est pas dans `promo_ingredients`, alors au moins 5 ingrédients de la colonne `Ingrédient` dans `first_half` doivent se trouver dans `promo_ingredients`.
+
+            Voici les DataFrames en format CSV:
+            `first_half`:
+            {first_half.to_csv(index=False)}
+
+            `promo_ingredients`:
+            {list(promo_ingredients)}
+
+            Ne me génère pas du code mais simplement les recettes que tu as trouvées qui répondent aux critères. Affiche à chaque fois les éléments de `promo_ingredients` qui se retrouvent dans la recette.
+            """
 
             headers = {
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {api_key}"
             }
 
+            payload = {
+                "model": "gpt-4o",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                "max_tokens": 4096
+            }
+
             response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
             response_json = response.json()
 
-            recipes = response_json['choices'][0]['message']['content']
+            # Afficher la réponse
+            if 'choices' in response_json and len(response_json['choices']) > 0:
+                result = response_json['choices'][0]['message']['content']
+                st.markdown('<h2 class="title-text">Suggestions de recettes pour la semaine</h2>', unsafe_allow_html=True)
+                st.write(result)
+            else:
+                st.error("Aucune réponse valide reçue de l'API GPT-4")
 
-            st.markdown('<h2 class="title-text">7 Recettes Générées</h2>', unsafe_allow_html=True)
-            st.write(recipes)
+        except Exception as e:
+            st.error(f"Erreur lors de la recherche des recettes : {e}")
 
 if __name__ == "__main__":
     main()
