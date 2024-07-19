@@ -93,7 +93,7 @@ def main():
         for index, pdf_file in enumerate(sorted_files):
             convert_pdf_to_jpg(pdf_file, index, image_paths, output_directory)
             # Mettre à jour la progression
-            pdf_progress_bar.progress((index + 1) / total_files)
+            # pdf_progress_bar.progress((index + 1) / total_files)
 
         # Vérifier que tous les fichiers existent
         existing_paths = [path for path in image_paths if os.path.exists(path)]
