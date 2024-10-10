@@ -3,7 +3,7 @@ import streamlit as st
 import os
 
 # Configuration de l'API OpenAI
-openai.api_key = "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"
+openai.api_key = ""
 
 st.title("Data Maturity Detective")
 
