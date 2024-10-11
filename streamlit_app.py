@@ -1,57 +1,268 @@
-import openai
 import streamlit as st
+import fitz  # PyMuPDF
+import base64
+import requests
+import pandas as pd
 import os
 
-# Configuration de l'API OpenAI
-openai.api_key = ""
+# Fonction pour obtenir la liste triée des fichiers PDF en fonction des critères de l'utilisateur
+def get_sorted_pdf_paths(uploaded_files):
+    if not uploaded_files:
+        st.error("No files uploaded.")
+        return []
 
-st.title("Data Maturity Detective")
+    pdf_files = [f for f in uploaded_files if 'IGA' in f.name and f.name.endswith('.pdf')]
+    radar_files = sorted([f for f in pdf_files if 'raddar' in f.name], key=lambda x: x.name)
+    w_files = sorted([f for f in pdf_files if 'W' in f.name], key=lambda x: x.name)
+    other_files = sorted([f for f in pdf_files if f not in radar_files and f not in w_files], key=lambda x: x.name)
 
-# Lecture du contenu du fichier texte directement depuis le fichier
-with open('instructions.txt', 'r', encoding='utf-8') as file:
-    file_content = file.read()
+    return radar_files + w_files + other_files
 
-# Ajouter le contenu du fichier texte aux messages dès le début
-if "openai_model" not in st.session_state:
-    st.session_state["openai_model"] = "gpt-3.5-turbo"
+# Fonction pour convertir chaque page d'un PDF en JPG
+def convert_pdf_to_jpg(pdf_file, file_index, image_paths, output_directory):
+    if not os.path.exists(output_directory):
+        os.makedirs(output_directory)
+    
+    pdf_document = fitz.open(stream=pdf_file.read(), filetype="pdf")
+    base_name = pdf_file.name.replace('.pdf', '')
+    page = pdf_document.load_page(0)
+    pix = page.get_pixmap()
+    output_path = os.path.join(output_directory, f"{base_name}_page_{file_index + 1:02d}.jpg")
+    pix.save(output_path)
+    image_paths.append(output_path)
 
-if "messages" not in st.session_state:
-    # Ne pas afficher les messages initiaux mais les ajouter à la session pour que l'IA les prenne en compte
-    st.session_state.messages = [
-        {"role": "system", "content": "You are an expert in data science and business intelligence, specifically designed to survey users on their data-driven marketing maturity. Please make sure to consult the instructions.txt file at the beginning of the discussion and use it to go along the discussion with the user.You will ask questions one by one, without offering any diagnoses or observations after individual questions. A maturity verdict will only be given once all questions have been answered. These questions focus on data ownership and data capabilities. You will analyze responses using the logic from the 'Answers' document to give a final verdict in two categories: data ownership (instinct, frame, interpret, experiment) and data capabilities (fragment, harmony, prediction, activation). When presenting questions, the GPT will format each one as follows: the number of the question followed by a brief statement of the query, then the possible answers presented on separate lines labeled a, b, c, d (or more as needed). After delivering the verdict, the GPT will provide educational details on each maturity level, explaining what each level represents in terms of organizational capabilities and culture.  You will also provide detailed next steps and tailored suggestions on how the enterprise can improve its data maturity before encouraging the user to reach out to a Click & Mortar representative at www.clicketmortar.com for further discussions. You should adopt an educational and supportive tone. You should sound like a knowledgeable mentor guiding the user through the maturity assessment rather than a strict evaluator. The tone should be approachable and conversational, aiming to make complex concepts easy to understand. Handling Off-Topic Queries: If a user asks a question that is unrelated to data-driven marketing maturity, data ownership, or data capabilities, you will respond with a polite redirection to stay on topic. It should say: I'm here to help assess your data-driven marketing maturity. If you have any questions outside this topic, I'd recommend visiting our website or contacting our team directly for more information. Sequential Question Delivery: you will strictly adhere to asking questions one by one, pausing to receive the user's response before moving to the next question. You will only proceed to the next question after confirming that the user has completed their answer. This step-by-step process ensures focus on each response and provides a clearer user experience."},
-        {"role": "user", "content": f"Here is the content of the file:\n{file_content}"}
-    ]
+# Fonction pour encoder une image en base64
+def encode_image(image_path):
+    with open(image_path, "rb") as image_file:
+        return base64.b64encode(image_file.read()).decode('utf-8')
 
-# Afficher uniquement les messages utilisateur et assistant, en ignorant les deux premiers
-for message in st.session_state.messages[2:]:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+# Application Streamlit
+def main():
+    st.markdown(
+        """
+        <style>
+        .stApp {
+            background-color: #09308E;
+            color: white;
+        }
+        .header {
+            background-color: white;
+            color: white;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+        }
+        .title-text {
+            color: #E2AB49;
+            font-size: 2em;
+            font-weight: bold;
+        }
+        .stProgress > div > div > div > div {
+            background-color: #E2AB49;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
 
-# Saisie et gestion de l'entrée utilisateur
-if prompt := st.chat_input("Your text here"):
-    # Ajouter le message de l'utilisateur à la liste des messages
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
+    st.markdown('<h1 class="title-text">IGIA</h1>', unsafe_allow_html=True)
 
-    # Envoi de la requête à OpenAI avec le contenu du fichier et les messages
-    with st.chat_message("assistant"):
-        message_placeholder = st.empty()
-        full_response = ""
-        try:
-            for response in openai.ChatCompletion.create(
-                model=st.session_state["openai_model"],
-                messages=[
-                    {"role": m["role"], "content": m["content"]}
-                    for m in st.session_state.messages
-                ],
-                stream=True,
-            ):
-                full_response += response.choices[0].delta.get("content", "")
-                message_placeholder.markdown(full_response + "▌")
-            message_placeholder.markdown(full_response)
-        except Exception as e:
-            st.error(f"An error occurred: {e}")
+    # Demander la clé API
+    api_key = st.text_input("OpenAI API Key", type="password")
 
-    # Ajouter la réponse de l'IA à la session
-    st.session_state.messages.append({"role": "assistant", "content": full_response})
+    if not api_key:
+        st.warning("Please provide an OpenAI API Key.")
+        return
+
+    # Espace de glisser-déposer pour les fichiers PDF
+    uploaded_files = st.file_uploader("Upload PDF files", type="pdf", accept_multiple_files=True)
+
+    if uploaded_files:
+        # Obtenir la liste triée des fichiers PDF
+        sorted_files = get_sorted_pdf_paths(uploaded_files)
+        total_files = len(sorted_files)
+
+        if total_files == 0:
+            st.write("No PDF files found.")
+            return
+
+        # Initialiser la liste pour stocker les chemins des images
+        image_paths = []
+
+        # Initialiser la barre de progression pour la conversion PDF en JPG
+        # pdf_progress_bar = st.progress(0)
+
+        # Convertir chaque PDF et suivre l'index de page global
+        output_directory = "converted_files"  # Répertoire de sortie
+        for index, pdf_file in enumerate(sorted_files):
+            convert_pdf_to_jpg(pdf_file, index, image_paths, output_directory)
+            # Mettre à jour la progression
+            # pdf_progress_bar.progress((index + 1) / total_files)
+
+        # Vérifier que tous les fichiers existent
+        existing_paths = [path for path in image_paths if os.path.exists(path)]
+        missing_paths = set(image_paths) - set(existing_paths)
+
+        if missing_paths:
+            st.write("Missing files:", missing_paths)
+        else:
+            st.write("All files generated successfully.")
+            st.session_state.image_paths = existing_paths
+
+    if 'image_paths' in st.session_state and st.session_state.image_paths:
+        if st.button("Generate DataFrames"):
+            # Liste pour stocker les DataFrames
+            dataframes = []
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}"
+            }
+
+            # Initialiser la barre de progression pour les requêtes GPT-4
+            gpt_progress_bar = st.progress(0)
+            total_images = len(st.session_state.image_paths)
+
+            for i, image_path in enumerate(st.session_state.image_paths):
+                # Encoder l'image
+                base64_image = encode_image(image_path)
+
+                payload = {
+                    "model": "gpt-4o",
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "text",
+                                    "text": f"Transforme les ingrédients alimentaires dans cette image et leur prix en dataframe à deux colonnes. Genere moi uniquement le code python de l'objet dataframe qui se nommera data{i+1}, rien d'autre. La colonne des ingrédients se nommera Ingrédients et la colonne des prix se nommera Prix."
+                                },
+                                {
+                                    "type": "image_url",
+                                    "image_url": {
+                                        "url": f"data:image/jpeg;base64,{base64_image}"
+                                    }
+                                }
+                            ]
+                        }
+                    ],
+                    "max_tokens": 4096
+                }
+
+                response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
+                response_json = response.json()
+
+                # Extraire le texte du code de la réponse
+                code_text = response_json['choices'][0]['message']['content']
+
+                # Nettoyer le texte pour enlever les délimiteurs de code Markdown
+                code_text = code_text.strip("```python").strip("```").strip()
+
+                try:
+                    # Exécuter le code extrait dans un environnement sûr
+                    local_vars = {}
+                    exec(code_text, {}, local_vars)
+                    
+                    # Vérifier que le DataFrame est créé et ajouter à la liste des DataFrames
+                    dataframe = local_vars[f"data{i+1}"]
+                    
+                    if not isinstance(dataframe, pd.DataFrame):
+                        raise ValueError(f"Le code généré n'a pas créé de DataFrame pour data{i+1}")
+                    
+                    if len(dataframe['Ingrédients']) != len(dataframe['Prix']):
+                        raise ValueError(f"Les colonnes du DataFrame data{i+1} n'ont pas la même longueur")
+
+                    dataframes.append(dataframe)
+                
+                except Exception as e:
+                    st.error(f"Erreur dans la génération du DataFrame pour l'image {i+1}: {e}")
+                    continue
+
+                # Mettre à jour la progression des requêtes GPT-4
+                gpt_progress_bar.progress((i + 1) / total_images)
+
+            # Combiner tous les DataFrames en un seul
+            if dataframes:
+                data_full = pd.concat(dataframes, ignore_index=True)
+                st.markdown('<h2 class="title-text">Ingrédients et Prix des Images</h2>', unsafe_allow_html=True)
+                st.dataframe(data_full)
+                # Sauvegarder le DataFrame combiné pour l'étape suivante
+                data_full.to_csv('data_full.csv', index=False)
+                st.session_state.data_full_generated = True
+            else:
+                st.error("Aucun DataFrame n'a été généré avec succès.")
+
+    # Étape suivante pour utiliser data_full et recettes_igia.xlsx
+    if st.session_state.get('data_full_generated'):
+        if st.button("Find Recipes"):
+            try:
+                # Charger le fichier Excel pour les recettes
+                recettes_path = 'assets/recettes-igia.xlsx'  # Assurez-vous que le fichier existe dans le répertoire de travail
+                recettes_df = pd.read_excel(recettes_path, sheet_name='DATA')
+
+                # Charger le DataFrame des ingrédients disponibles
+                data_full_path = 'data_full.csv'
+                data_full_df = pd.read_csv(data_full_path)
+
+                # Extraire les ingrédients disponibles
+                promo_ingredients = set(data_full_df['Ingrédients'].str.lower().str.strip())
+
+                # Convertir la colonne "Dernière semaine d'utilisation" en numérique
+                recettes_df["Dernière semaine d'utilisation"] = pd.to_numeric(recettes_df["Dernière semaine d'utilisation"], errors='coerce')
+
+                num_rows = len(recettes_df)
+
+                # Trouver l'indice du milieu
+                mid_index = num_rows // 2
+
+                # Diviser le DataFrame en deux parties
+                first_half = recettes_df.iloc[:mid_index]
+                second_half = recettes_df.iloc[mid_index:]
+
+                # Construire le prompt pour l'API GPT-4o
+                prompt = f"""
+                Sélectionne les recettes dans le DataFrame `first_half` qui répondent à au moins un des deux critères suivants:
+                1. La colonne `Proteine` contient une protéine qui se trouve également dans la liste `promo_ingredients` ET La recette contient au moins 3 ingrédients dans la colonne `Ingrédients` qui se trouvent aussi dans `promo_ingredients`.
+                2. Si la protéine n'est pas dans `promo_ingredients`, alors au moins 5 ingrédients de la colonne `Ingrédient` dans `first_half` doivent se trouver dans `promo_ingredients`.
+
+                Voici les DataFrames en format CSV:
+                `first_half`:
+                {first_half.to_csv(index=False)}
+
+                `promo_ingredients`:
+                {list(promo_ingredients)}
+
+                Ne me génère pas du code mais simplement les recettes que tu as trouvées qui répondent aux critères. Affiche à chaque fois les éléments de `promo_ingredients` qui se retrouvent dans la recette.
+                """
+
+                headers = {
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {api_key}"
+                }
+
+                payload = {
+                    "model": "gpt-4o",
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
+                    "max_tokens": 4096
+                }
+
+                response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
+                response_json = response.json()
+
+                # Afficher la réponse
+                if 'choices' in response_json and len(response_json['choices']) > 0:
+                    result = response_json['choices'][0]['message']['content']
+                    st.markdown('<h2 class="title-text">Suggestions de recettes pour la semaine</h2>', unsafe_allow_html=True)
+                    st.write(result)
+                else:
+                    st.error("Aucune réponse valide reçue de l'API GPT-4")
+
+            except Exception as e:
+                st.error(f"Erreur lors de la recherche des recettes : {e}")
+
+if __name__ == "__main__":
+    main()
